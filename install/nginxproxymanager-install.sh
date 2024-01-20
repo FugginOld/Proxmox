@@ -122,9 +122,9 @@ if [ ! -f /data/nginx/dummycert.pem ] || [ ! -f /data/nginx/dummykey.pem ]; then
   openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 -subj "/O=Nginx Proxy Manager/OU=Dummy Certificate/CN=localhost" -keyout /data/nginx/dummykey.pem -out /data/nginx/dummycert.pem &>/dev/null
 fi
 
-mkdir -p /app/global /app/frontend/images
-cp -r backend/* /app
-cp -r global/* /app/global
+mkdir -p /opt/npm/global /opt/npm/frontend/images
+cp -r backend/* /opt/npm
+cp -r global/* /opt/npm/global
 wget -q "https://github.com/just-containers/s6-overlay/releases/download/v3.1.5.0/s6-overlay-noarch.tar.xz"
 wget -q "https://github.com/just-containers/s6-overlay/releases/download/v3.1.5.0/s6-overlay-x86_64.tar.xz"
 tar -C / -Jxpf s6-overlay-noarch.tar.xz
@@ -137,14 +137,14 @@ export NODE_ENV=development
 $STD yarn add -D sass-loader@10.5.2
 $STD yarn install --network-timeout=30000
 $STD yarn build
-cp -r dist/* /app/frontend
-cp -r app-images/* /app/frontend/images
+cp -r dist/* /opt/npm/frontend
+cp -r app-images/* /opt/npm/frontend/images
 msg_ok "Built Frontend"
 
 msg_info "Initializing Backend"
-rm -rf /app/config/default.json
-if [ ! -f /app/config/production.json ]; then
-  cat <<'EOF' >/app/config/production.json
+rm -rf /opt/npm/config/default.json
+if [ ! -f /opt/npm/config/production.json ]; then
+  cat <<'EOF' >/opt/npm/config/production.json
 {
   "database": {
     "engine": "knex-native",
@@ -158,13 +158,13 @@ if [ ! -f /app/config/production.json ]; then
 }
 EOF
 fi
-cd /app
+cd /opt/npm
 export NODE_ENV=development
 $STD yarn install --network-timeout=30000
 msg_ok "Initialized Backend"
 
 msg_info "Creating Service"
-cat <<'EOF' >/lib/systemd/system/npm.service
+cat <<'EOF' >/etc/systemd/system/npm.service
 [Unit]
 Description=Nginx Proxy Manager
 After=network.target
@@ -175,7 +175,7 @@ Type=simple
 Environment=NODE_ENV=production
 ExecStartPre=-mkdir -p /tmp/nginx/body /data/letsencrypt-acme-challenge
 ExecStart=/usr/bin/node index.js --abort_on_uncaught_exception --max_old_space_size=250
-WorkingDirectory=/app
+WorkingDirectory=/opt/npm
 Restart=on-failure
 
 [Install]
